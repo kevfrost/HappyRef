@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Description 
-This is a quick and easy citation tool intended to generate literature notes by generating notes from the digital object identifier (DOI) code using the CrossRef API.
+This is a quick and easy citation tool intended to generate literature notes by generating notes from the digital object identifier ([DOI](https://en.wikipedia.org/wiki/Digital_object_identifier)) code using the [CrossRef API]([url](https://www.crossref.org/documentation/retrieve-metadata/rest-api/)).
 
 ## Table of Contents
 
@@ -36,7 +36,8 @@ If you want to stay up-to-date with the latest beta releases, you can use BRAT:
 - Either click on the Smiley icon or access the command palette (Ctrl+P) and type "HappyRef" to generate a new literature note.  The system will prompt for a DOI, from which it will pull data into YAML frontmatter and attempt to construct a citation and pull the article's abstract.
 
 ## Additional features
-- Changed your mind about the citation style?  Go to the command palette and select Change 
+- Changed your mind about the citation style?  Go to the command palette and select Change Citation Style 
 - Want a different default style? Go to settings and select your option there
-- Want files created somewhere different
+- Want files created somewhere different? Go to settings and select your folder
+- Want a different file name schema?  In settings you can choose the article title, the author or the author (year)
 
