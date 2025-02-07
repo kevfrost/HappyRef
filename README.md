@@ -16,7 +16,7 @@ This is a quick and easy citation tool intended to generate literature notes by 
 
 ### Manual Installation
 
-1. Download the latest release from [Releases](https://github.com/[Your GitHub Username]/[Your Plugin Repo Name]/releases).
+1. Download the latest release from Releases.
 2. Extract the `HappyRef` folder from the zip file to your Obsidian vault's plugins folder: `<your-vault>/.obsidian/plugins/`.
 	* **Note**: On some machines, the `.obsidian` folder may be hidden by default. Enable hidden folders to locate it.
 3. Reload Obsidian.
