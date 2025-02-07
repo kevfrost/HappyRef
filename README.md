@@ -34,6 +34,7 @@ If you want to stay up-to-date with the latest beta releases, you can use BRAT:
 ## Usage
 - Install as above
 - Either click on the Smiley icon or access the command palette (Ctrl+P) and start typing, then select "HappyRef Get Citation from CrossRef" to generate a new literature note.  The system will prompt for a DOI, from which it will pull data into YAML frontmatter and attempt to construct a citation and pull the article's abstract.
+- Data is in the frontmatter, so should be accessible via Dataview and other plugins.
 
 ### Example workflow
 = You've seen an article you want to capture, we're going to use this one
