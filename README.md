@@ -37,7 +37,7 @@ If you want to stay up-to-date with the latest beta releases, you can use BRAT:
 - Data is in the frontmatter, so should be accessible via Dataview and other plugins.
 
 ### Example workflow
-= You've seen an article you want to capture, we're going to use this one
+- You've seen an article you want to capture, we're going to use this one https://link.springer.com/article/10.1007/s42979-024-02876-4 as an example.
 - Copy and paste the DOI from the page, in this case: https://doi.org/10.58594/rtest.v4i2.113
 - Click on the icon or use Ctrl+P and type Happy Ref... and into the popup type in https://doi.org/10.58594/rtest.v4i2.113
 - The new page will show the output
