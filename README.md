@@ -1,7 +1,5 @@
 # HappyRef for Obsidian
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
 ## Description 
 This is a quick and easy citation tool intended to generate literature notes by generating notes from the digital object identifier ([DOI](https://en.wikipedia.org/wiki/Digital_object_identifier)) code using the [CrossRef API](https://www.crossref.org/documentation/retrieve-metadata/rest-api/).
 
