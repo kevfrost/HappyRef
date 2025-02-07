@@ -41,8 +41,8 @@ If you want to stay up-to-date with the latest beta releases, you can use BRAT:
 - Copy and paste the DOI from the page, in this case: https://doi.org/10.58594/rtest.v4i2.113
 - Click on the icon or use Ctrl+P and type Happy Ref... and into the popup type in https://doi.org/10.58594/rtest.v4i2.113
 - The new page will show the output
-  ![image](https://github.com/user-attachments/assets/626f99a2-2cc4-40de-8605-767e39f8a54d)
-  ![image](https://github.com/user-attachments/assets/5df94ff2-744a-4f29-afa3-c7fb8b648711)
+  ![image](https://github.com/user-attachments/assets/b1b33233-89dc-4082-9c34-3479e2db4996)
+
 
 
 
