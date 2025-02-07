@@ -33,8 +33,7 @@ If you want to stay up-to-date with the latest beta releases, you can use BRAT:
 
 ## Usage
 - Install as above
-- Either click on the Smiley icon or access the command palette (Ctrl+P) and type "HappyRef" to
-- This will create a new file for the literature
+- Either click on the Smiley icon or access the command palette (Ctrl+P) and type "HappyRef" to generate a new literature note.  The system will prompt for a DOI, from which it will pull data into YAML frontmatter and attempt to construct a citation and pull the article's abstract.
 
 ## Additional features
 - Changed your mind about the citation style?  Go to the command palette and select Change 
