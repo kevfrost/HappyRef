@@ -1,11 +1,11 @@
 {
 	"id": "HappyRef",
-	"name": "Happy Referencing",
-	"version": "0.1.0",
+	"name": "HappyRef Citation Tool",
+	"version": "0.2.0",
 	"minAppVersion": "0.15.0",
-	"description": ".",
+	"description": "HappyRef extracts citation metadata from Crossref, simplifying your Citationary Experiences.",
 	"author": "Kevin Frost",
 	"authorUrl": "https://github.com/kevfrost",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"fundingUrl": "https://buymeacoffee.com/kevfrost",
 	"isDesktopOnly": true
 }

@@ -4,7 +4,8 @@
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",
-    "target": "ES6",
+    "target": "es2017",
+	  "types": ["obsidian"], // This is the crucial line!
     "allowJs": true,
     "noImplicitAny": true,
     "moduleResolution": "node",
@@ -12,10 +13,8 @@
     "isolatedModules": true,
     "strictNullChecks": true,
     "lib": [
-      "DOM",
-      "ES5",
-      "ES6",
-      "ES7"
+      "ES2017",
+		"DOM"
     ]
   },
   "include": [
