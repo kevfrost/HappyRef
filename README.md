@@ -33,10 +33,21 @@ If you want to stay up-to-date with the latest beta releases, you can use BRAT:
 
 ## Usage
 - Install as above
-- Either click on the Smiley icon or access the command palette (Ctrl+P) and type "HappyRef" to generate a new literature note.  The system will prompt for a DOI, from which it will pull data into YAML frontmatter and attempt to construct a citation and pull the article's abstract.
+- Either click on the Smiley icon or access the command palette (Ctrl+P) and start typing, then select "HappyRef Get Citation from CrossRef" to generate a new literature note.  The system will prompt for a DOI, from which it will pull data into YAML frontmatter and attempt to construct a citation and pull the article's abstract.
+
+### Example workflow
+= You've seen an article you want to capture, we're going to use this one
+- Copy and paste the DOI from the page, in this case: https://doi.org/10.58594/rtest.v4i2.113
+- Click on the icon or use Ctrl+P and type Happy Ref... and into the popup type in https://doi.org/10.58594/rtest.v4i2.113
+- The new page will show the output
+  ![image](https://github.com/user-attachments/assets/626f99a2-2cc4-40de-8605-767e39f8a54d)
+  ![image](https://github.com/user-attachments/assets/5df94ff2-744a-4f29-afa3-c7fb8b648711)
+
+
 
 ## Additional features
-- Changed your mind about the citation style?  Go to the command palette and select Change Citation Style 
+- Changed your mind about the citation style?  Go to the command palette and select Change Citation Style
+- Works with either the https or plain version (https://doi.org/10.58594/rtest.v4i2.113 or 10.58594/rtest.v4i2.113) of the DOI.
 - Want a different default style? Go to settings and select your option there
 - Want files created somewhere different? Go to settings and select your folder
 - Want a different file name schema?  In settings you can choose the article title, the author or the author (year)
