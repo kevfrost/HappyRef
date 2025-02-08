@@ -1,22 +1,10 @@
-import {
-	App,
-	DropdownComponent,
-	Editor,
-	MarkdownView,
-	Modal,
-	Notice,
-	Plugin,
-	PluginSettingTab,
-	Setting,
-	TFile
-} from 'obsidian';
+import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, DropdownComponent, Editor, MarkdownView, TFolder } from 'obsidian';
 import * as yaml from 'js-yaml'; // Corrected import statement
 
 interface HappyRefSettings {
 	defaultFolder: string;
 	citationStyle: CitationStyle;
 	fileNameStyle: FileNameStyle; // Added fileNameStyle setting
-	tag: string;
 }
 
 type CitationStyle = 'Harvard' | 'Vancouver' | 'None' | 'APA' | 'Chicago' | 'AMA' | 'AP' | 'Canadian' | 'Oxford'; // ADDED 'Oxford'
@@ -25,8 +13,7 @@ type FileNameStyle = 'Title' | 'Author' | 'Author (Year)'; // Renamed "Author (D
 const DEFAULT_SETTINGS: HappyRefSettings = {
 	defaultFolder: '',
 	citationStyle: 'Harvard',
-	fileNameStyle: 'Title', // Default fileNameStyle is Title
-	tag: 'CreatedBy/HappyRef',
+	fileNameStyle: 'Title' // Default fileNameStyle is Title
 }
 
 // Define interface for Author object based on Crossref API response
@@ -66,7 +53,7 @@ export default class HappyRef extends Plugin {
 			callback: () => {
 				new DOIModal(this.app, this.settings, async (doi) => {
 					try {
-
+						
 						const data = await this.fetchCrossrefData(doi);
 						if (data && data.message) {
 							const createdFile = await this.createNote(data.message);
@@ -158,6 +145,28 @@ export default class HappyRef extends Plugin {
 		}
 		return await response.json();
 	}
+
+	async fetchCrossrefDataByISBN(isbn: string): Promise<any> {
+		// Using Crossref API to search by ISBN. Ref: https://api.crossref.org/works?filter=isbn:<ISBN>
+		const apiUrl = `https://api.crossref.org/works?filter=isbn:${encodeURIComponent(isbn)}`; // Construct URL for ISBN query
+		const response = await fetch(apiUrl);
+
+		if (!response.ok) {
+			if (response.status === 404) {
+				throw new Error(`ISBN not found: ${isbn}`);
+			} else {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+		}
+		const jsonResponse = await response.json();
+		if (jsonResponse.message && jsonResponse.message.items && jsonResponse.message.items.length > 0) {
+			return { message: jsonResponse.message.items[0] }; // Return the first item from the items array, as ISBN should be unique
+		} else {
+			return { message: null }; // No items found for the ISBN
+		}
+	}
+
+
 	async createNote(message: any): Promise<TFile | null> {
 		let baseFilename = "Crossref Note"; // Default fallback filename
 		const fileNameStyle = this.settings.fileNameStyle;
@@ -255,8 +264,7 @@ export default class HappyRef extends Plugin {
 		}
 
 		// --- YAML Frontmatter Content ---
-		let content = `---\ntags: [`+this.settings.tag+`]\n`;
-
+		let content = `---\ntags: [CreatedBy/HappyRef]\n`;
 		if (authors.length > 0) {
 			content += `authors: ${JSON.stringify(authors)}\n`;
 		}
@@ -333,19 +341,14 @@ export default class HappyRef extends Plugin {
 		}
 
 		if (citationText) {
-			content += `\n **Reference**: ${citationText}\n\n---\n\n`;
+			content += `## Citation\n${citationText}\n\n---\n\n`;
 		}
 		// --- End Citation Formatting ---
 
 
 		content += `## Abstract\n`;
 		if (message.abstract) {
-			message.abstract = message.abstract.replaceAll("[", "(");
-			message.abstract = message.abstract.replaceAll("]", ")");
-			message.abstract = message.abstract.replaceAll("&amp;lt;", "\<");
-
-			message.abstract = message.abstract.replaceAll("&amp;gt;", "\>");
-			message.abstract = message.abstract.replaceAll("<jats:title>Abstract</jats:title>","");
+			message.abstract = message.abstract.replaceAll("<jats:title>Abstract</jats:title>");
 
 			message.abstract = message.abstract.replaceAll("<jats:sec>", "");
 			message.abstract = message.abstract.replaceAll("</jats:sec>", "");
@@ -379,8 +382,7 @@ export default class HappyRef extends Plugin {
 		let contentBody = fileContent;
 
 		// 3. Generate new YAML frontmatter string from metadata
-		const TagFromSettings = this.settings.tag;
-		let newFrontmatterString = `---\ntags: [${TagFromSettings}]\n`;
+		let newFrontmatterString = `---\ntags: [CreatedBy/HappyRef]\n`;
 		if (metadata.author && metadata.author.length > 0) {
 			const authors = (metadata.author as Author[]).map(author => `${author.given} ${author.family}`);
 			newFrontmatterString += `authors: ${JSON.stringify(authors)}\n`;
@@ -488,7 +490,8 @@ export default class HappyRef extends Plugin {
 						const month = (currentDate.getMonth() + 1).toString().padStart(2, "0");
 						const day = currentDate.getDate().toString().padStart(2, "0");
 						const yearAccessed = currentDate.getFullYear();
-						citationMetadata['date-accessed'] = `${yearAccessed}-${month}-${day}`;
+						const accessedDate = `${yearAccessed}-${month}-${day}`;
+						citationMetadata['date-accessed'] = accessedDate;
 
 						// 5. Update YAML frontmatter in the file with updated citationMetadata
 						await this.updateYAMLFrontmatter(file, citationMetadata);
@@ -539,7 +542,7 @@ export default class HappyRef extends Plugin {
 
 		} else {
 			// If "## Citation" section is not found (shouldn't happen if note was created by plugin), append it.
-			updatedContent = contentBody + `\n### Citation\n${citationText}\n\n---`;
+			updatedContent = contentBody + `\n## Citation\n${citationText}\n\n---`;
 		}
 
 
@@ -559,35 +562,14 @@ export default class HappyRef extends Plugin {
 		// Explicitly cast message.author to Author[]
 		const authorsArray: Author[] = message.author as Author[];
 		const authors = authorsArray.map((author: Author) => `${author.family}, ${author.given?.[0]}.`).join(', ');
-
-		// Authors arrangement for citation
-			let AuthorArray = authors.split(",");
-		    let authorStr = authorsArray[0].family;
-			if (AuthorArray.length > 1 ) {
-				authorStr += ' et al';
-
-			}
-			if (AuthorArray.length <1) {
-				authorStr += '';
-			}
-
-
-			const year = message.issued['date-parts'][0][0];
+		const year = message.issued['date-parts'][0][0];
 		if (!year) return "Could not generate Harvard citation due to missing year data.";
 		const title = message.title[0];
 		const journal = message['container-title'][0];
 		const doi = message.DOI;
-		const currentDate = new Date();
-		const month = (currentDate.getMonth() + 1).toString().padStart(2, "0");
-		const day = currentDate.getDate().toString().padStart(2, "0");
-		const yearAccessed = currentDate.getFullYear();
-		const accessedDate = `${yearAccessed}-${month}-${day}`;
+		const accessedDate = message['date-accessed'];
 
-		let reference = `${authors} (${year}) ${title}. *${journal}*. Available at: [https://doi.org/${doi}] (Accessed: ${accessedDate}).`;
-		reference += `\n---\n\n`;
-
-		reference += authorStr + ` (`+ year +`) tells us that `;
-		return reference;
+		return `${authors} (${year}) ${title}. *${journal}*. Available at: [https://doi.org/${doi}] (Accessed: ${accessedDate}).`;
 	}
 
 	formatVancouverCitation(message: any): string {
@@ -618,23 +600,7 @@ export default class HappyRef extends Plugin {
 		const doi = message.DOI;
 
 
-
-		let reference = `${authors} ${title}. ${journal}. ${year}; Available from: [https://doi.org/${doi}].`;
- 		reference += `\n---\n\n`;
-		// Authors arrangement for citation
-		let AuthorArray = authors.split(",");
-		let authorStr = authorsArray[0].family;
-		if (AuthorArray.length > 1 ) {
-			authorStr += ' et al';
-
-		}
-		if (AuthorArray.length <1) {
-			authorStr += '';
-		}
-
-
-		reference += authorStr + ` tells us that `;
-		return reference;
+		return `${authors} ${title}. ${journal}. ${year}; Available from: [https://doi.org/${doi}].`;
 	}
 
 	formatAPACitation(message: any): string {
@@ -696,26 +662,7 @@ export default class HappyRef extends Plugin {
 		}
 
 
-
-
-		let reference = citation;
-		reference += `\n---\n\n`;
-		// Authors arrangement for citation
-		let AuthorArray = authors.split(",");
-		let authorStr = authorsArray[0].family;
-		if (AuthorArray.length > 1 ) {
-			authorStr += ' et al';
-
-		}
-		if (AuthorArray.length <1) {
-			authorStr += '';
-		}
-
-
-		reference += authorStr + ` tells us that `;
-		return reference;
-
-
+		return citation;
 	}
 
 
@@ -770,23 +717,7 @@ export default class HappyRef extends Plugin {
 		}
 
 
-		let reference = citation;
-		reference += `\n---\n\n`;
-		// Authors arrangement for citation
-		let AuthorArray = authors.split(",");
-		let authorStr = authorsArray[0].family;
-		if (AuthorArray.length > 1 ) {
-			authorStr += ' et al';
-
-		}
-		if (AuthorArray.length <1) {
-			authorStr += '';
-		}
-
-
-		reference += authorStr + ` tells us that `;
-		return reference;
-
+		return citation;
 	}
 
 	formatAMACitation(message: any): string {
@@ -848,22 +779,7 @@ export default class HappyRef extends Plugin {
 		}
 
 
-		let reference = citation;
-		reference += `\n---\n\n`;
-		// Authors arrangement for citation
-		let AuthorArray = authors.split(",");
-		let authorStr = authorsArray[0].family;
-		if (AuthorArray.length > 1 ) {
-			authorStr += ' et al';
-
-		}
-		if (AuthorArray.length <1) {
-			authorStr += '';
-		}
-
-
-		reference += authorStr + ` tells us that `;
-		return reference;
+		return citation;
 	}
 
 
@@ -908,22 +824,7 @@ export default class HappyRef extends Plugin {
 			citation += ` Retrieved from ${url}`; // Add URL if no DOI
 		}
 
-		let reference = citation;
-		reference += `\n---\n\n`;
-		// Authors arrangement for citation
-		let AuthorArray = authors.split(",");
-		let authorStr = authorsArray[0].family;
-		if (AuthorArray.length > 1 ) {
-			authorStr += ' et al';
-
-		}
-		if (AuthorArray.length <1) {
-			authorStr += '';
-		}
-
-
-		reference += authorStr + ` tells us that `;
-		return reference;
+		return citation;
 	}
 
 	formatCanadianCitation(message: any): string {
@@ -1033,22 +934,7 @@ export default class HappyRef extends Plugin {
 		}
 
 
-		let reference = citation;
-		reference += `\n---\n\n`;
-		// Authors arrangement for citation
-		let AuthorArray = authors.split(",");
-		let authorStr = authorsArray[0].family;
-		if (AuthorArray.length > 1 ) {
-			authorStr += ' et al';
-
-		}
-		if (AuthorArray.length <1) {
-			authorStr += '';
-		}
-
-
-		reference += authorStr + ` tells us that `;
-		return reference;
+		return citation;
 	}
 
 
@@ -1140,8 +1026,6 @@ class CitationStyleModal extends Modal {
 	}
 }
 
-
-
 class CrossrefSettingTab extends PluginSettingTab {
 	plugin: HappyRef;
 
@@ -1191,26 +1075,24 @@ class CrossrefSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Default Folder')
 			.setDesc('Enter the folder path where notes will be created. Leave empty for root.')
-			.addText(text => {
-				text
-					.setPlaceholder('e.g., CrossrefNotes')
-					.setValue(this.plugin.settings.defaultFolder)
-					.onChange(async (value) => {
-						this.plugin.settings.defaultFolder = value;
-						await this.plugin.saveSettings();
-					});
-
-			});
-
-		new Setting(containerEl)
-			.setName('tag')
-			.setDesc('Enter the tag which will be assigned to notes when  created.')
 			.addText(text => text
 				.setPlaceholder('e.g., CrossrefNotes')
-				.setValue(this.plugin.settings.tag)
+				.setValue(this.plugin.settings.defaultFolder)
 				.onChange(async (value) => {
-
-					this.plugin.settings.tag = value;
+					// Folder creation logic starts here
+					if (value) {
+						const folder = this.app.vault.getAbstractFileByPath(value);
+						if (!folder) {
+							try {
+								await this.app.vault.createFolder(value);
+								new Notice(`Folder "${value}" created.`);
+							} catch (e) {
+								console.error("Error creating folder:", e);
+								new Notice(`Failed to create folder "${value}". Check console for details.`);
+							}
+						}
+					}
+					this.plugin.settings.defaultFolder = value;
 					await this.plugin.saveSettings();
 				}));
 	}
