@@ -25,7 +25,7 @@ This is a quick and easy citation tool intended to generate literature notes by 
 If you want to stay up-to-date with the latest beta releases, you can use BRAT:
 
 1. Install the BRAT plugin in Obsidian (if you haven't already).
-2. Go to `Settings` -> `BRAT` and add `[Your GitHub Username]/[Your Plugin Repo Name]` under "Beta Plugin List".
+2. Go to `Settings` -> `BRAT` and add `kevfrost/HappyRef` under "Beta Plugin List".
 3. Check for updates in BRAT.
 4. Once the plugin is listed, enable `HappyRef` in the Community plugins settings.
 
