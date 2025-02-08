@@ -8,7 +8,7 @@ import {
 	Plugin,
 	PluginSettingTab,
 	Setting,
-	TFile
+	TFile,
 } from 'obsidian';
 import * as yaml from 'js-yaml'; // Corrected import statement
 
