@@ -5,7 +5,7 @@
     "inlineSources": true,
     "module": "ESNext",
     "target": "es2017",
-	  "types": ["obsidian"], // This is the crucial line!
+	  "types": ["obsidian","js-yaml"], // This is the crucial line!
     "allowJs": true,
     "noImplicitAny": true,
     "moduleResolution": "node",
