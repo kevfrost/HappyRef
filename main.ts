@@ -26,10 +26,10 @@ const DEFAULT_SETTINGS: HappyRefSettings = {
 	defaultFolder: '',
 	citationStyle: 'Harvard',
 	fileNameStyle: 'Title', // Default fileNameStyle is Title
-	tag: 'CreatedBy/HappyRef',
+	tag: 'CreatedBy: HappyRef',
 }
 
-// Define interface for Author object based on Crossref API response
+// Define interface for Author object based on HappyRef API response
 interface Author {
 	given?: string; // Given name is optional
 	family?: string; // Family name is optional
@@ -61,8 +61,8 @@ export default class HappyRef extends Plugin {
 		await this.loadSettings();
 
 		this.addCommand({
-			id: 'fetch-crossref-doi',
-			name: 'Fetch from Crossref by DOI',
+			id: 'fetch-HappyRef-doi',
+			name: 'Fetch from HappyRef by DOI',
 			callback: () => {
 				new DOIModal(this.app, this.settings, async (doi) => {
 					try {
@@ -87,7 +87,7 @@ export default class HappyRef extends Plugin {
 		});
 
 
-		this.addRibbonIcon('sticker', 'Fetch Crossref DOI', () => {
+		this.addRibbonIcon('sticker', 'Fetch HappyRef DOI', () => {
 			new DOIModal(this.app, this.settings, async (doi) => {
 				try {
 					const data = await this.fetchCrossrefData(doi);
@@ -146,7 +146,7 @@ export default class HappyRef extends Plugin {
 	}
 
 	async fetchCrossrefData(doi: string): Promise<any> {
-		const apiUrl = `https://api.crossref.org/works/${encodeURIComponent(doi)}`;
+		const apiUrl = `https://api.HappyRef.org/works/${encodeURIComponent(doi)}`;
 		const response = await fetch(apiUrl);
 
 		if (!response.ok) {
@@ -159,16 +159,16 @@ export default class HappyRef extends Plugin {
 		return await response.json();
 	}
 	async createNote(message: any): Promise<TFile | null> {
-		let baseFilename = "Crossref Note"; // Default fallback filename
+		let baseFilename = "HappyRef Note"; // Default fallback filename
 		const fileNameStyle = this.settings.fileNameStyle;
 
 		if (fileNameStyle === 'Title') {
 			let title = message.title?.[0] || "Untitled";
-			baseFilename = title.replace(/[/\\?%*:|"<>]/g, ' ').trim() || "Crossref Note";
+			baseFilename = title.replace(/[/\\?%*:|"<>]/g, ' ').trim() || "HappyRef Note";
 		} else if (fileNameStyle === 'Author') {
 			if (message.author && message.author.length > 0) {
 				const firstAuthor = message.author[0] as Author;
-				baseFilename = `${firstAuthor.family || 'UnknownAuthor'}`.replace(/[/\\?%*:|"<>]/g, ' ').trim() || "Crossref Note";
+				baseFilename = `${firstAuthor.family || 'UnknownAuthor'}`.replace(/[/\\?%*:|"<>]/g, ' ').trim() || "HappyRef Note";
 			} else {
 				baseFilename = "Untitled"; // Fallback if no author
 			}
@@ -215,8 +215,8 @@ export default class HappyRef extends Plugin {
 			}
 		}
 
-
-		let filename = baseFilename;
+		//let baseFilename2= "2008 focused update incorporated into the ACC AHA 2006 guidelines for the management of patients with valvular heart disease a report of the American College of Cardiology American Heart Association Task Force on Practice Guidelines (Writing Committee to revise the 1998 guidelines for the management of patients with valvular heart disease). Endorsed by the Society of Cardiovascular Anesthesiologists, Society for Cardiovascular Angiography and Interventions, and Society of Thoracic Surgeons"
+		let filename = baseFilename.substring(0,250);
 		let folderPath = this.settings.defaultFolder; // Get folder path from settings
 		let filePath = filename + ".md";
 
@@ -256,6 +256,9 @@ export default class HappyRef extends Plugin {
 
 		// --- YAML Frontmatter Content ---
 		let content = `---\ntags: [`+this.settings.tag+`]\n`;
+		if (message['volume']) {
+			content += `Volume: ${message['volume']}\n`;
+		}
 
 		if (authors.length > 0) {
 			content += `authors: ${JSON.stringify(authors)}\n`;
@@ -265,6 +268,9 @@ export default class HappyRef extends Plugin {
 		}
 		if (message['volume']) {
 			content += `Volume: ${message['volume']}\n`;
+		}
+		if (message['title']) {
+			content += `Page_title: "${message['title']}"\n`;
 		}
 		if (message['page']) {
 			content += `Page: ${message['page']}\n`;
@@ -301,6 +307,20 @@ export default class HappyRef extends Plugin {
 		const yearAccessed = currentDate.getFullYear();
 		const accessedDate = `${yearAccessed}-${month}-${day}`;
 		content += `Date Accessed: ${accessedDate}\n`;
+		content += `Aliases: \n`;
+		//content += ` - `+JSON.stringify(authors).split(",")[0]+`\n`;
+		const PauthorsArray: Author[] = message.author as Author[];
+		let Pauthors = '';
+		if (PauthorsArray.length === 1) {
+			Pauthors = `${PauthorsArray[0].family}`;
+		}
+		else
+		{
+			Pauthors = `${PauthorsArray[0].family} et al. `;
+		}
+		content += ` - `+Pauthors+`(`+message.issued['date-parts'][0][0]+`)\n`;
+
+
 
 		content += `---\n\n`;
 		// --- End YAML Frontmatter Content ---
@@ -380,7 +400,7 @@ export default class HappyRef extends Plugin {
 
 		// 3. Generate new YAML frontmatter string from metadata
 		const TagFromSettings = this.settings.tag;
-		let newFrontmatterString = `---\ntags: [${TagFromSettings}]\n`;
+		let newFrontmatterString = `---\n[${TagFromSettings}]\n`;
 		if (metadata.author && metadata.author.length > 0) {
 			const authors = (metadata.author as Author[]).map(author => `${author.given} ${author.family}`);
 			newFrontmatterString += `authors: ${JSON.stringify(authors)}\n`;
@@ -492,9 +512,9 @@ export default class HappyRef extends Plugin {
 
 						// 5. Update YAML frontmatter in the file with updated citationMetadata
 						await this.updateYAMLFrontmatter(file, citationMetadata);
-						new Notice(`Re-fetched citation data from Crossref.`);
+						new Notice(`Re-fetched citation data from HappyRef.`);
 					} else {
-						throw new Error("Failed to re-fetch data from Crossref for DOI: " + doi);
+						throw new Error("Failed to re-fetch data from HappyRef for DOI: " + doi);
 					}
 				} catch (fetchError) {
 					console.error("Error re-fetching data:", fetchError);
@@ -586,7 +606,7 @@ export default class HappyRef extends Plugin {
 		let reference = `${authors} (${year}) ${title}. *${journal}*. Available at: [https://doi.org/${doi}] (Accessed: ${accessedDate}).`;
 		reference += `\n---\n\n`;
 
-		reference += authorStr + ` (`+ year +`) tells us that `;
+		reference += "**Description**:: " +authorStr + ` (`+ year +`) describes that `;
 		return reference;
 	}
 
@@ -633,7 +653,7 @@ export default class HappyRef extends Plugin {
 		}
 
 
-		reference += authorStr + ` tells us that `;
+		reference += "**Description::** " +authorStr + ` (`+ year +`) describes that `;
 		return reference;
 	}
 
@@ -711,8 +731,7 @@ export default class HappyRef extends Plugin {
 			authorStr += '';
 		}
 
-
-		reference += authorStr + ` tells us that `;
+		reference += "**Description::** " +authorStr + ` (`+ year +`) describes that `;
 		return reference;
 
 
@@ -784,7 +803,7 @@ export default class HappyRef extends Plugin {
 		}
 
 
-		reference += authorStr + ` tells us that `;
+		reference += "**Description::** " +authorStr + ` (`+ year +`) describes that `;
 		return reference;
 
 	}
@@ -828,6 +847,8 @@ export default class HappyRef extends Plugin {
 		if (year) {
 			citation += ` ${year};`;
 		}
+
+
 		if (volume) {
 			citation += `${volume}`;
 		}
@@ -862,7 +883,7 @@ export default class HappyRef extends Plugin {
 		}
 
 
-		reference += authorStr + ` tells us that `;
+		reference += "**Description::** " +authorStr + ` (`+ year +`) describes that `;
 		return reference;
 	}
 
@@ -922,7 +943,7 @@ export default class HappyRef extends Plugin {
 		}
 
 
-		reference += authorStr + ` tells us that `;
+		reference += "**Description::** " +authorStr + ` (`+ year +`) describes that `;
 		return reference;
 	}
 
@@ -1193,7 +1214,7 @@ class CrossrefSettingTab extends PluginSettingTab {
 			.setDesc('Enter the folder path where notes will be created. Leave empty for root.')
 			.addText(text => {
 				text
-					.setPlaceholder('e.g., CrossrefNotes')
+					.setPlaceholder('e.g., LiteratureNotes')
 					.setValue(this.plugin.settings.defaultFolder)
 					.onChange(async (value) => {
 						this.plugin.settings.defaultFolder = value;
@@ -1204,9 +1225,9 @@ class CrossrefSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('tag')
-			.setDesc('Enter the tag which will be assigned to notes when  created.')
+			.setDesc('Enter the property which will be assigned to notes when created.')
 			.addText(text => text
-				.setPlaceholder('e.g., CrossrefNotes')
+				.setPlaceholder('e.g., tag: CreatedBy/HappyRef or CreatedBy: HappyRef')
 				.setValue(this.plugin.settings.tag)
 				.onChange(async (value) => {
 
