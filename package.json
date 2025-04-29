@@ -1,7 +1,7 @@
 {
 	"name": "HappyRef",
-	"version": "0.3.4",
-	"description": "This is a plugin for Obsidian (https://obsidian.md)",
+	"version": "0.4",
+	"description": "This is a plugin for Obsidian (https://obsidian.md) enabling literature notes from a DOI",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",

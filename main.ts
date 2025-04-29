@@ -60,9 +60,30 @@ export default class HappyRef extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
+		this.addRibbonIcon('sticker', 'Fetch Crossref DOI', () => {
+			new DOIModal(this.app, this.settings, async (doi) => {
+				try {
+					const data = await this.fetchCrossrefData(doi);
+					if (data && data.message) {
+						const createdFile = await this.createNote(data.message);
+						if (createdFile) {
+							await this.app.workspace.openLinkText(createdFile.path, '', false);
+						}
+						console.log(data.message);
+						new Notice(`Successfully created and opened note`);
+					} else {
+						new Notice(`Failed to fetch data or invalid DOI: ${doi}`);
+					}
+				} catch (error) {
+					console.error("Error fetching or creating note:", error);
+					new Notice(`Error fetching data: ${error.message}`);
+				}
+			}).open();
+		});
+
 		this.addCommand({
 			id: 'fetch-crossref-doi',
-			name: 'Fetch from Crossref by DOI',
+			name: 'Create a new note by DOI',
 			callback: () => {
 				new DOIModal(this.app, this.settings, async (doi) => {
 					try {
@@ -87,30 +108,9 @@ export default class HappyRef extends Plugin {
 		});
 
 
-		this.addRibbonIcon('sticker', 'Fetch Crossref DOI', () => {
-			new DOIModal(this.app, this.settings, async (doi) => {
-				try {
-					const data = await this.fetchCrossrefData(doi);
-					if (data && data.message) {
-						const createdFile = await this.createNote(data.message);
-						if (createdFile) {
-							await this.app.workspace.openLinkText(createdFile.path, '', false);
-						}
-						console.log(data.message);
-						new Notice(`Successfully created and opened note`);
-					} else {
-						new Notice(`Failed to fetch data or invalid DOI: ${doi}`);
-					}
-				} catch (error) {
-					console.error("Error fetching or creating note:", error);
-					new Notice(`Error fetching data: ${error.message}`);
-				}
-			}).open();
-		});
-
 		this.addCommand({
 			id: 'change-citation-style',
-			name: 'Change Citation Style',
+			name: 'Refresh Citation Style',
 			editorCallback: async (editor: Editor, view: MarkdownView) => {
 				const currentFile = view.file;
 				if (!currentFile) {
@@ -153,7 +153,7 @@ export default class HappyRef extends Plugin {
 			if (response.status === 404) {
 				throw new Error(`DOI not found: ${doi}`);
 			} else {
-				throw new Error(`HTTP error! status: ${response.status}`);
+				throw new Error(`There's a problem with accessing the CrossRef website - HTTP error: ${response.status}`);
 			}
 		}
 		return await response.json();
