@@ -60,30 +60,9 @@ export default class HappyRef extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
-		this.addRibbonIcon('sticker', 'Fetch Crossref DOI', () => {
-			new DOIModal(this.app, this.settings, async (doi) => {
-				try {
-					const data = await this.fetchCrossrefData(doi);
-					if (data && data.message) {
-						const createdFile = await this.createNote(data.message);
-						if (createdFile) {
-							await this.app.workspace.openLinkText(createdFile.path, '', false);
-						}
-						console.log(data.message);
-						new Notice(`Successfully created and opened note`);
-					} else {
-						new Notice(`Failed to fetch data or invalid DOI: ${doi}`);
-					}
-				} catch (error) {
-					console.error("Error fetching or creating note:", error);
-					new Notice(`Error fetching data: ${error.message}`);
-				}
-			}).open();
-		});
-
 		this.addCommand({
-			id: 'fetch-crossref-doi',
-			name: 'Create a new note by DOI',
+			id: 'a-fetch-crossref-doi',
+			name: 'Create Note from DOI',
 			callback: () => {
 				new DOIModal(this.app, this.settings, async (doi) => {
 					try {
@@ -108,9 +87,30 @@ export default class HappyRef extends Plugin {
 		});
 
 
+		this.addRibbonIcon('sticker', 'Create note from DOI', () => {
+			new DOIModal(this.app, this.settings, async (doi) => {
+				try {
+					const data = await this.fetchCrossrefData(doi);
+					if (data && data.message) {
+						const createdFile = await this.createNote(data.message);
+						if (createdFile) {
+							await this.app.workspace.openLinkText(createdFile.path, '', false);
+						}
+						console.log(data.message);
+						new Notice(`Successfully created and opened note`);
+					} else {
+						new Notice(`Failed to fetch data or invalid DOI: ${doi}`);
+					}
+				} catch (error) {
+					console.error("Error fetching or creating note:", error);
+					new Notice(`Error fetching data: ${error.message}`);
+				}
+			}).open();
+		});
+
 		this.addCommand({
 			id: 'change-citation-style',
-			name: 'Refresh Citation Style',
+			name: 'Revise Citation Style',
 			editorCallback: async (editor: Editor, view: MarkdownView) => {
 				const currentFile = view.file;
 				if (!currentFile) {
@@ -153,7 +153,7 @@ export default class HappyRef extends Plugin {
 			if (response.status === 404) {
 				throw new Error(`DOI not found: ${doi}`);
 			} else {
-				throw new Error(`There's a problem with accessing the CrossRef website - HTTP error: ${response.status}`);
+				throw new Error(`HTTP error! status: ${response.status}`);
 			}
 		}
 		return await response.json();
@@ -197,7 +197,7 @@ export default class HappyRef extends Plugin {
 				if (year) {
 					let authorString = `${firstAuthor.family || 'UnknownAuthor'}`;
 					if (message.author.length > 1) { // Check for multiple authors
-						authorString += " et al"; // Add "et al" if more than one author
+						authorString += " et al."; // Add "et al" if more than one author
 					}
 					baseFilename = `${authorString} (${year})`.replace(/[/\\?%*:|"<>]/g, ' ').trim();
 					console.log("baseFilename (Author Year):", baseFilename); // Debug: Check baseFilename value
