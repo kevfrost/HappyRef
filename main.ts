@@ -62,7 +62,7 @@ export default class HappyRef extends Plugin {
 
 		this.addCommand({
 			id: 'a-fetch-crossref-doi',
-			name: 'Create Note from DOI',
+			name: 'Create Note from DOI (e.g. https://doi.org/10.58594/rtest.v4i2.113 or 10.58594/rtest.v4i2.113)',
 			callback: () => {
 				new DOIModal(this.app, this.settings, async (doi) => {
 					try {
@@ -99,7 +99,7 @@ export default class HappyRef extends Plugin {
 						console.log(data.message);
 						new Notice(`Successfully created and opened note`);
 					} else {
-						new Notice(`Failed to fetch data or invalid DOI: ${doi}`);
+						new Notice(`Error.  Failed to fetch data from server or invalid DOI: ${doi}`);
 					}
 				} catch (error) {
 					console.error("Error fetching or creating note:", error);
