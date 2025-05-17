@@ -1,7 +1,7 @@
 {
 	"id": "happy-ref",
 	"name": "HappyRef",
-	"version": "1.0.1"
+	"version": "1.0.2"
 	"minAppVersion": "0.15.0",
 	"description": "HappyRef extracts citation metadata from Crossref, simplifying your Citationary Experiences.",
 	"author": "Kevin Frost",
