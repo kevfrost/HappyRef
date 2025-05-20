@@ -1,6 +1,6 @@
 {
 	"name": "HappyRef",
-	"version": "0.4",
+	"version": "1.0.1",
 	"description": "This is a plugin for Obsidian (https://obsidian.md) enabling literature notes from a DOI",
 	"main": "main.js",
 	"scripts": {
@@ -20,7 +20,7 @@
 		"esbuild": "^0.25.4",
 		"obsidian": "^1.7.2",
 		"tslib": "2.4.0",
-		"typescript": "^4.7.4"
+		"typescript": "^4.9.5"
 	},
 	"dependencies": {
 		"@jamesgopsill/crossref-client": "^1.1.0",
