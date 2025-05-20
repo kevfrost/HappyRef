@@ -73,6 +73,8 @@ export default class HappyRef extends Plugin {
 							if (createdFile) {
 								await this.app.workspace.openLinkText(createdFile.path, '', false);
 							}
+
+						//	console.log(data.message);
 							// console.log(data.message);
 							new Notice(`Successfully created and opened note`);
 						} else {
@@ -102,6 +104,7 @@ export default class HappyRef extends Plugin {
 						new Notice(`Error.  Failed to fetch data from server or invalid DOI: ${doi}`);
 					}
 				} catch (error) {
+
 					// console.error("Error fetching or creating note:", error);
 					new Notice(`Error fetching data: ${error.message}`);
 				}
@@ -173,15 +176,18 @@ export default class HappyRef extends Plugin {
 				baseFilename = "Untitled"; // Fallback if no author
 			}
 		} else if (fileNameStyle === 'Author (Year)') { // Modified logic for "Author (Year)"
+
 			// console.log("fileNameStyle is Author (Year)"); // Debug: Check if this block is reached
 			if (message.author && message.author.length > 0) { // Check for author first, year check moved inside
 				// console.log("Author data found"); // Debug: Author found
+
 				const firstAuthor = message.author[0] as Author;
 				let year: number | undefined;
 
 				// Prioritize year from message.issued, then published-print, published-online, created
 				if (message.issued && message.issued['date-parts'] && message.issued['date-parts'][0] && message.issued['date-parts'][0][0]) {
 					year = message.issued['date-parts'][0][0];
+
 					// console.log("Year found in issued"); // Debug: Year found in issued
 				} else if (message['published-print'] && message['published-print']['date-parts'] && message['published-print']['date-parts'][0] && message['published-print']['date-parts'][0][0]) {
 					year = message['published-print']['date-parts'][0][0];
@@ -192,6 +198,7 @@ export default class HappyRef extends Plugin {
 				} else if (message.created && message.created['date-parts'] && message.created['date-parts'][0] && message.created['date-parts'][0][0]) {
 					year = message.created['date-parts'][0][0];
 					// console.log("Year found in created"); // Debug: Year found in created
+
 				}
 
 				if (year) {
@@ -200,7 +207,9 @@ export default class HappyRef extends Plugin {
 						authorString += " et al."; // Add "et al" if more than one author
 					}
 					baseFilename = `${authorString} (${year})`.replace(/[/\\?%*:|"<>]/g, ' ').trim();
+
 					// console.log("baseFilename (Author Year):", baseFilename); // Debug: Check baseFilename value
+
 				} else {
 					// console.log("No year found in issued, published-print, published-online, or created"); // Debug: No year found anywhere
 					baseFilename = "Untitled"; // Fallback if no year found
@@ -209,9 +218,11 @@ export default class HappyRef extends Plugin {
 
 
 			} else {
+
 				// console.log("Author data missing"); // Debug: Author data missing
 				baseFilename = "Untitled"; // Fallback if no author
 				// console.log("baseFilename (Untitled):", baseFilename); // Debug: Check baseFilename value
+
 			}
 		}
 
@@ -230,7 +241,9 @@ export default class HappyRef extends Plugin {
 					new Notice(`Folder "${folderPath}" created.`);
 				} catch (e) {
 					// console.error("Error creating folder:", e);
+
 					new Notice(`Failed to create folder "${folderPath}". Check // console for details.`);
+
 					folderPath = ""; // Fallback to root if folder creation fails
 				}
 			}
