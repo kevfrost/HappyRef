@@ -5,12 +5,90 @@ import {
 	MarkdownView,
 	Modal,
 	Notice,
+	parseYaml,
 	Plugin,
 	PluginSettingTab,
 	Setting,
+	stringifyYaml,
 	TFile,
 } from 'obsidian';
-import * as yaml from 'js-yaml'; // Corrected import statement
+// Initial Feedback
+/*
+* [ ] "js-yaml": "^4.1.0", frontmatter = yaml.load(frontmatterMatch[1]) as CitationMetadata || {};
+Use parseYaml and stringifyYaml to parse and update frontmatter. You don't need to include your own package for this.
+
+const frontmatter = parseYaml(yaml);
+frontmatter.title = title;
+const updatedFrontmatter = stringifyYaml(frontmatter);
+
+* [x] Remove the styles.css file from your release and your repo, since it's empty it's just unnecessary bloat that Obsidian would download.
+
+
+* 'Create Note from DOI (e.g. https://doi.org/10.58594/rtest.v4i2.113 or 10.58594/rtest.v4i2.113)', 'Revise Citation Style', 'Change Citation Style', .setName('Select Citation Style'), .setButtonText('Change Style'), .setName('Default Citation Style'), .setName('Filename Style'), .setName('Default Folder')
+Use sentence case in UI
+
+
+* const response = await fetch(apiUrl);
+Use the requestUrl function from the Obsidian API instead, it will handle some things like CORS automatically.
+
+
+* baseFilename = title.replace(/[/\?%*:|"<>]/g, ' ').trim() || "Crossref Note";, baseFilename = ${firstAuthor.family || 'UnknownAuthor'}.replace(/[/\?%*:|"<>]/g, ' ').trim() || "Crossref Note";, baseFilename = ${authorString} (${year}).replace(/[/\?%*:|"<>]/g, ' ').trim();, folderPath = folderPath.replace(//+$/, '');, filePath = folderPath ? folderPath.replace(//+$/, '') + '/' + filename + ".md" : filename + ".md";, this.plugin.settings.defaultFolder = value;
+Use normalizePath to clean up user defined paths
+
+
+* const folder = this.app.vault.getAbstractFileByPath(folderPath);
+When using Vault.getAbstractFileByPath, the result will be either a TFile, TFolder, or null. Your current code does not account for all of these scenarios. If you are only expecting a TFile, prefer to use Vault.getFileByPath. If you are only expecting a TFolder, prefer to use Vault.getFolderByPath. Note that you'll also need to update your minAppVersion to at least 1.5.7 to safely use either of these APIs.
+
+
+* let content = ---\n+this.settings.tag+\n;
+Use stringifyYaml to generate frontmatter safely, escaping special characters as needed.
+
+const frontmatter = {};
+// Add frontmatter to object, for example...
+frontmatter.title = title;
+// Get frontmatter as string for writing to new file
+const updatedFrontmatter = stringifyYaml(frontmatter);
+let fileContent = await this.app.vault.read(file);, await this.app.vault.modify(file, frontmatterMatch ? ---\n${frontmatterMatch[1]}---\n${updatedContent} : contentBody + '\n' + newCitationSection);
+Prefer to use Vault.process() instead of Vault.modify() to modify a file in the background. Because the callback function to Vault.process() must be synchronous, you're going to need to retrieve the frontmatter using MetadataCache.getFileCache, then get any missing metadata, then update the note using Vault.process().
+
+// Get frontmatter
+this.app.metadataCache.getFileCache(file)?.frontmatter;
+// Get missing metadata (only if needed)
+const newData = await this.fetchCrossrefData(doi);
+// Update file
+await this.app.vault.process(file, (data) => {
+    // Perform file updates here, synchronously
+});
+const frontmatterRegex = /^---([\s\S]*?)---/;
+
+* Please use MetadataCache.getFileCache to get frontmatter from a file.
+If this won't work for your use case, then use getFrontMatterInfo to get information about the frontmatter of a file, including whether there is a frontmatter block, the offsets of where it starts and ends, and the frontmatter text.
+
+
+* await this.updateYAMLFrontmatter(file, citationMetadata);, async updateYAMLFrontmatter(file: TFile, metadata: CitationMetadata): Promise<void> {
+This function modifies the current file while the function that calls this function is already in the middle of modifying the current file. Your second modification is going to overwrite any changes made by this function, calling this function isn't going to change the end result. Please remove this function.
+
+
+* containerEl.createEl('h2', { text: 'HappyRef Settings' });
+Don't add a top-level heading in the settings tab, such as "General", "Settings", or the name of your plugin.
+For the future, for section headings in settings use:
+
+new Setting(containerEl).setName('name here').setHeading();
+new Setting(containerEl)
+Use AbstractInputSuggest when letting a user select a file/folder to add type-ahead support.
+
+Optional feedback:
+
+
+* [ ] To make the manual review process and future plugin maintenance more efficient, we recommend that you split your code into multiple files and move all source code files into a src directory.
+
+
+* [ ] Prefer not to use the any type.
+*
+* */
+
+
+// import * as yaml from 'js-yaml'; // Corrected import statement // advised not to use
 
 interface HappyRefSettings {
 	defaultFolder: string;
@@ -383,6 +461,11 @@ export default class HappyRef extends Plugin {
 
 
 	async updateYAMLFrontmatter(file: TFile, metadata: CitationMetadata): Promise<void> {
+		// Advised to uee native
+		const frontmatter = parseYaml(file);
+		frontmatter.title = "tile";
+		const updatedFrontmatter = stringifyYaml(frontmatter);
+		/*
 		// 1. Read file content
 		let fileContent = await this.app.vault.read(file);
 		// 2. Regex to find frontmatter
@@ -451,7 +534,7 @@ export default class HappyRef extends Plugin {
 		} else {
 			// If no frontmatter (unlikely, but handle case), prepend it.
 			await this.app.vault.modify(file, newFrontmatterString + "\n" + contentBody);
-		}
+		}*/
 	}
 
 
@@ -503,6 +586,7 @@ export default class HappyRef extends Plugin {
 						citationMetadata['date-accessed'] = `${yearAccessed}-${month}-${day}`;
 
 						// 5. Update YAML frontmatter in the file with updated citationMetadata
+						//await this.updateYAMLFrontmatter(file, citationMetadata);
 						await this.updateYAMLFrontmatter(file, citationMetadata);
 						new Notice(`Re-fetched citation data from Crossref.`);
 					} else {
