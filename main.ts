@@ -1,94 +1,17 @@
 import {
 	App,
-	DropdownComponent,
-	Editor,
-	MarkdownView,
 	Modal,
 	Notice,
-	parseYaml,
+	normalizePath,
+	requestUrl,
 	Plugin,
 	PluginSettingTab,
 	Setting,
-	stringifyYaml,
-	TFile,
+	TFile
 } from 'obsidian';
-// Initial Feedback
-/*
-* [ ] "js-yaml": "^4.1.0", frontmatter = yaml.load(frontmatterMatch[1]) as CitationMetadata || {};
-Use parseYaml and stringifyYaml to parse and update frontmatter. You don't need to include your own package for this.
-
-const frontmatter = parseYaml(yaml);
-frontmatter.title = title;
-const updatedFrontmatter = stringifyYaml(frontmatter);
-
-* [x] Remove the styles.css file from your release and your repo, since it's empty it's just unnecessary bloat that Obsidian would download.
-
-
-* 'Create Note from DOI (e.g. https://doi.org/10.58594/rtest.v4i2.113 or 10.58594/rtest.v4i2.113)', 'Revise Citation Style', 'Change Citation Style', .setName('Select Citation Style'), .setButtonText('Change Style'), .setName('Default Citation Style'), .setName('Filename Style'), .setName('Default Folder')
-Use sentence case in UI
-
-
-* const response = await fetch(apiUrl);
-Use the requestUrl function from the Obsidian API instead, it will handle some things like CORS automatically.
-
-
-* baseFilename = title.replace(/[/\?%*:|"<>]/g, ' ').trim() || "Crossref Note";, baseFilename = ${firstAuthor.family || 'UnknownAuthor'}.replace(/[/\?%*:|"<>]/g, ' ').trim() || "Crossref Note";, baseFilename = ${authorString} (${year}).replace(/[/\?%*:|"<>]/g, ' ').trim();, folderPath = folderPath.replace(//+$/, '');, filePath = folderPath ? folderPath.replace(//+$/, '') + '/' + filename + ".md" : filename + ".md";, this.plugin.settings.defaultFolder = value;
-Use normalizePath to clean up user defined paths
-
-
-* const folder = this.app.vault.getAbstractFileByPath(folderPath);
-When using Vault.getAbstractFileByPath, the result will be either a TFile, TFolder, or null. Your current code does not account for all of these scenarios. If you are only expecting a TFile, prefer to use Vault.getFileByPath. If you are only expecting a TFolder, prefer to use Vault.getFolderByPath. Note that you'll also need to update your minAppVersion to at least 1.5.7 to safely use either of these APIs.
-
-
-* let content = ---\n+this.settings.tag+\n;
-Use stringifyYaml to generate frontmatter safely, escaping special characters as needed.
-
-const frontmatter = {};
-// Add frontmatter to object, for example...
-frontmatter.title = title;
-// Get frontmatter as string for writing to new file
-const updatedFrontmatter = stringifyYaml(frontmatter);
-let fileContent = await this.app.vault.read(file);, await this.app.vault.modify(file, frontmatterMatch ? ---\n${frontmatterMatch[1]}---\n${updatedContent} : contentBody + '\n' + newCitationSection);
-Prefer to use Vault.process() instead of Vault.modify() to modify a file in the background. Because the callback function to Vault.process() must be synchronous, you're going to need to retrieve the frontmatter using MetadataCache.getFileCache, then get any missing metadata, then update the note using Vault.process().
-
-// Get frontmatter
-this.app.metadataCache.getFileCache(file)?.frontmatter;
-// Get missing metadata (only if needed)
-const newData = await this.fetchCrossrefData(doi);
-// Update file
-await this.app.vault.process(file, (data) => {
-    // Perform file updates here, synchronously
-});
-const frontmatterRegex = /^---([\s\S]*?)---/;
-
-* Please use MetadataCache.getFileCache to get frontmatter from a file.
-If this won't work for your use case, then use getFrontMatterInfo to get information about the frontmatter of a file, including whether there is a frontmatter block, the offsets of where it starts and ends, and the frontmatter text.
-
-
-* await this.updateYAMLFrontmatter(file, citationMetadata);, async updateYAMLFrontmatter(file: TFile, metadata: CitationMetadata): Promise<void> {
-This function modifies the current file while the function that calls this function is already in the middle of modifying the current file. Your second modification is going to overwrite any changes made by this function, calling this function isn't going to change the end result. Please remove this function.
-
-
-* containerEl.createEl('h2', { text: 'HappyRef Settings' });
-Don't add a top-level heading in the settings tab, such as "General", "Settings", or the name of your plugin.
-For the future, for section headings in settings use:
-
-new Setting(containerEl).setName('name here').setHeading();
-new Setting(containerEl)
-Use AbstractInputSuggest when letting a user select a file/folder to add type-ahead support.
-
-Optional feedback:
-
-
-* [ ] To make the manual review process and future plugin maintenance more efficient, we recommend that you split your code into multiple files and move all source code files into a src directory.
-
-
-* [ ] Prefer not to use the any type.
-*
-* */
-
-
-// import * as yaml from 'js-yaml'; // Corrected import statement // advised not to use
+import {FileNameStyle} from "./src/settings";
+import {CitationStyle} from "./src/settings";
+import { FolderSuggest } from './src/FolderSuggest';
 
 interface HappyRefSettings {
 	defaultFolder: string;
@@ -97,38 +20,18 @@ interface HappyRefSettings {
 	tag: string;
 }
 
-type CitationStyle = 'Harvard' | 'Vancouver' | 'None' | 'APA' | 'Chicago' | 'AMA' | 'AP' | 'Canadian' | 'Oxford'; // ADDED 'Oxford'
-type FileNameStyle = 'Title' | 'Author' | 'Author (Year)'; // Renamed "Author (Date)" to "Author (Year)"
 
 const DEFAULT_SETTINGS: HappyRefSettings = {
-	defaultFolder: '',
+	defaultFolder: 'Happy',
 	citationStyle: 'Harvard',
 	fileNameStyle: 'Title', // Default fileNameStyle is Title
 	tag: 'Source/CreatedBy: HappyRef',
 }
 
-// Define interface for Author object based on Crossref API response
+// Define interface for Author object based on Happyref API response
 interface Author {
 	given?: string; // Given name is optional
 	family?: string; // Family name is optional
-}
-
-interface CitationMetadata {
-	[key: string]: any; // Index signature to allow string indexing - FIX for TS7053
-	title?: string[];
-	author?: Author[];
-	'container-title'?: string[];
-	publisher?: string;
-	issued?: { 'date-parts': number[][] };
-	DOI?: string;
-	ISBN?: string[];
-	type?: string;
-	URL?: string;
-	abstract?: any;
-	volume?: string;
-	page?: string;
-	issue?: string;
-	'date-accessed'?: string; // To store date accessed in metadata
 }
 
 
@@ -139,27 +42,25 @@ export default class HappyRef extends Plugin {
 		await this.loadSettings();
 
 		this.addCommand({
-			id: 'a-fetch-crossref-doi',
-			name: 'Create Note from DOI (e.g. https://doi.org/10.58594/rtest.v4i2.113 or 10.58594/rtest.v4i2.113)',
+			id: 'a-fetch-Happyref-doi',
+			name: 'Create note from doi (e.g. https://doi.org/10.58594/rtest.v4i2.113 or 10.58594/rtest.v4i2.113)',
 			callback: () => {
 				new DOIModal(this.app, this.settings, async (doi) => {
 					try {
 
-						const data = await this.fetchCrossrefData(doi);
+						const data = await this.fetchHappyrefData(doi);
 						if (data && data.message) {
 							const createdFile = await this.createNote(data.message);
 							if (createdFile) {
 								await this.app.workspace.openLinkText(createdFile.path, '', false);
 							}
-
-
 							// console.log(data.message);
 							new Notice(`Successfully created and opened note`);
 						} else {
 							new Notice(`Failed to fetch data or invalid DOI: ${doi}`);
 						}
 					} catch (error) {
-						console.error("Error fetching or creating note:", error);
+						// console.error("Error fetching or creating note:", error);
 						new Notice(`Error fetching data: ${error.message}`);
 					}
 				}).open();
@@ -170,48 +71,27 @@ export default class HappyRef extends Plugin {
 		this.addRibbonIcon('sticker', 'Create note from DOI', () => {
 			new DOIModal(this.app, this.settings, async (doi) => {
 				try {
-					const data = await this.fetchCrossrefData(doi);
+					const data = await this.fetchHappyrefData(doi);
 					if (data && data.message) {
 						const createdFile = await this.createNote(data.message);
 						if (createdFile) {
 							await this.app.workspace.openLinkText(createdFile.path, '', false);
 						}
-						//console.log(data.message);
+						// console.log(data.message);
 						new Notice(`Successfully created and opened note`);
 					} else {
 						new Notice(`Error.  Failed to fetch data from server or invalid DOI: ${doi}`);
 					}
 				} catch (error) {
-
 					// console.error("Error fetching or creating note:", error);
 					new Notice(`Error fetching data: ${error.message}`);
 				}
 			}).open();
 		});
 
-		this.addCommand({
-			id: 'change-citation-style',
-			name: 'Revise Citation Style',
-			editorCallback: async (editor: Editor, view: MarkdownView) => {
-				const currentFile = view.file;
-				if (!currentFile) {
-					new Notice('No active file.');
-					return;
-				}
-				new CitationStyleModal(this.app, this, async (newStyle) => { // Pass `this` (plugin instance) here!
-					try {
-						await this.changeCitationStyle(currentFile, newStyle);
-						new Notice(`Citation style updated to ${newStyle}.`);
-					} catch (error) {
-						console.error('Error changing citation style:', error);
-						new Notice(`Failed to change citation style: ${error.message}`);
-					}
-				}).open();
-			}
-		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new CrossrefSettingTab(this.app, this));
+		this.addSettingTab(new HappyrefSettingTab(this.app, this));
 	}
 
 	onunload() {
@@ -226,57 +106,56 @@ export default class HappyRef extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	async fetchCrossrefData(doi: string): Promise<any> {
+	async fetchHappyrefData(doi: string): Promise<any> {
 		const apiUrl = `https://api.crossref.org/works/${encodeURIComponent(doi)}`;
-		const response = await fetch(apiUrl);
-
-		if (!response.ok) {
-			if (response.status === 404) {
-				throw new Error(`DOI not found: ${doi}`);
-			} else {
-				throw new Error(`HTTP error! status: ${response.status}`);
+		const response = await requestUrl(apiUrl);
+		//console.log(response.status);
+		if (response.status === 200) {
+			console.log(response.status);
+				}
+				else {
+					if (response.status === 404) {
+					throw new Error(`DOI not found: ${doi}`);
+				} else {
+					throw new Error(`HTTP error! status: ${response.status}`);
 			}
 		}
-		return await response.json();
+		return await response.json;
 	}
 	async createNote(message: any): Promise<TFile | null> {
-		let baseFilename = "Crossref Note"; // Default fallback filename
+		let baseFilename = "Happyref Note"; // Default fallback filename
 		const fileNameStyle = this.settings.fileNameStyle;
 
 		if (fileNameStyle === 'Title') {
-			let title = message.title?.[0] || "Untitled";
-			baseFilename = title.replace(/[/\\?%*:|"<>]/g, ' ').trim() || "Crossref Note";
+			const title = message.title?.[0] || "Untitled";
+			baseFilename = title.replace(/[/\\?%*:|"<>]/g, ' ').trim() || "Happyref Note";
 		} else if (fileNameStyle === 'Author') {
 			if (message.author && message.author.length > 0) {
 				const firstAuthor = message.author[0] as Author;
-				baseFilename = `${firstAuthor.family || 'UnknownAuthor'}`.replace(/[/\\?%*:|"<>]/g, ' ').trim() || "Crossref Note";
+				baseFilename = `${firstAuthor.family || 'UnknownAuthor'}`.replace(/[/\\?%*:|"<>]/g, ' ').trim() || "Happyref Note";
 			} else {
 				baseFilename = "Untitled"; // Fallback if no author
 			}
 		} else if (fileNameStyle === 'Author (Year)') { // Modified logic for "Author (Year)"
-
-			//console.log("fileNameStyle is Author (Year)"); // Debug: Check if this block is reached
+			// console.log("fileNameStyle is Author (Year)"); // Debug: Check if this block is reached
 			if (message.author && message.author.length > 0) { // Check for author first, year check moved inside
-				//console.log("Author data found"); // Debug: Author found
-
+				// console.log("Author data found"); // Debug: Author found
 				const firstAuthor = message.author[0] as Author;
 				let year: number | undefined;
 
 				// Prioritize year from message.issued, then published-print, published-online, created
 				if (message.issued && message.issued['date-parts'] && message.issued['date-parts'][0] && message.issued['date-parts'][0][0]) {
 					year = message.issued['date-parts'][0][0];
-
 					// console.log("Year found in issued"); // Debug: Year found in issued
 				} else if (message['published-print'] && message['published-print']['date-parts'] && message['published-print']['date-parts'][0] && message['published-print']['date-parts'][0][0]) {
 					year = message['published-print']['date-parts'][0][0];
-					//console.log("Year found in published-print"); // Debug: Year found in published-print
+					// console.log("Year found in published-print"); // Debug: Year found in published-print
 				} else if (message['published-online'] && message['published-online']['date-parts'] && message['published-online']['date-parts'][0] && message['published-online']['date-parts'][0][0]) {
 					year = message['published-online']['date-parts'][0][0];
-					//console.log("Year found in published-online"); // Debug: Year found in published-online
+					// console.log("Year found in published-online"); // Debug: Year found in published-online
 				} else if (message.created && message.created['date-parts'] && message.created['date-parts'][0] && message.created['date-parts'][0][0]) {
 					year = message.created['date-parts'][0][0];
-					//console.log("Year found in created"); // Debug: Year found in created
-
+					// console.log("Year found in created"); // Debug: Year found in created
 				}
 
 				if (year) {
@@ -285,34 +164,30 @@ export default class HappyRef extends Plugin {
 						authorString += " et al."; // Add "et al" if more than one author
 					}
 					baseFilename = `${authorString} (${year})`.replace(/[/\\?%*:|"<>]/g, ' ').trim();
-
 					// console.log("baseFilename (Author Year):", baseFilename); // Debug: Check baseFilename value
-
 				} else {
-					//console.log("No year found in issued, published-print, published-online, or created"); // Debug: No year found anywhere
+					// console.log("No year found in issued, published-print, published-online, or created"); // Debug: No year found anywhere
 					baseFilename = "Untitled"; // Fallback if no year found
-					//console.log("baseFilename (Untitled):", baseFilename); // Debug: Check baseFilename value
+					// console.log("baseFilename (Untitled):", baseFilename); // Debug: Check baseFilename value
 				}
 
 
 			} else {
-
 				// console.log("Author data missing"); // Debug: Author data missing
 				baseFilename = "Untitled"; // Fallback if no author
 				// console.log("baseFilename (Untitled):", baseFilename); // Debug: Check baseFilename value
-
 			}
 		}
 
 
-		let filename = baseFilename;
+		let filename = normalizePath(baseFilename);
 		let folderPath = this.settings.defaultFolder; // Get folder path from settings
 		let filePath = filename + ".md";
 
 		if (folderPath) {
 			folderPath = folderPath.replace(/\/+$/, ''); // Trim trailing slashes
 			// Check if folder exists, create if not
-			const folder = this.app.vault.getAbstractFileByPath(folderPath);
+			const folder = this.app.vault.getFolderByPath(folderPath);
 			if (!folder) {
 				try {
 					await this.app.vault.createFolder(folderPath);
@@ -320,7 +195,6 @@ export default class HappyRef extends Plugin {
 				} catch (e) {
 					// console.error("Error creating folder:", e);
 					new Notice(`Failed to create folder "${folderPath}". Check // console for details.`);
-
 					folderPath = ""; // Fallback to root if folder creation fails
 				}
 			}
@@ -345,8 +219,9 @@ export default class HappyRef extends Plugin {
 		}
 
 		// --- YAML Frontmatter Content ---
-		let content = `---\n`+this.settings.tag+`\n`;
-
+		let content = `---\n`;
+		content += this.settings.tag;
+		content += `\n`;
 		if (authors.length > 0) {
 			content += `authors: ${JSON.stringify(authors)}\n`;
 		}
@@ -425,6 +300,7 @@ export default class HappyRef extends Plugin {
 		if (citationText) {
 			content += `\n **Reference**: ${citationText}\n\n---\n\n`;
 		}
+
 		// --- End Citation Formatting ---
 
 
@@ -432,9 +308,9 @@ export default class HappyRef extends Plugin {
 		if (message.abstract) {
 			message.abstract = message.abstract.replaceAll("[", "(");
 			message.abstract = message.abstract.replaceAll("]", ")");
-			message.abstract = message.abstract.replaceAll("&amp;lt;", "\<");
+			message.abstract = message.abstract.replaceAll("&amp;lt;", "<");
 
-			message.abstract = message.abstract.replaceAll("&amp;gt;", "\>");
+			message.abstract = message.abstract.replaceAll("&amp;gt;", ">");
 			message.abstract = message.abstract.replaceAll("<jats:title>Abstract</jats:title>","");
 
 			message.abstract = message.abstract.replaceAll("<jats:sec>", "");
@@ -460,191 +336,6 @@ export default class HappyRef extends Plugin {
 	}
 
 
-	async updateYAMLFrontmatter(file: TFile, metadata: CitationMetadata): Promise<void> {
-		// Advised to uee native
-		const frontmatter = parseYaml(file);
-		frontmatter.title = "tile";
-		const updatedFrontmatter = stringifyYaml(frontmatter);
-		/*
-		// 1. Read file content
-		let fileContent = await this.app.vault.read(file);
-		// 2. Regex to find frontmatter
-		const frontmatterRegex = /^---([\s\S]*?)---/;
-		let frontmatterMatch = fileContent.match(frontmatterRegex);
-		let contentBody = fileContent;
-
-		// 3. Generate new YAML frontmatter string from metadata
-		const TagFromSettings = this.settings.tag;
-		let newFrontmatterString = `---\n${TagFromSettings}\n`;
-		if (metadata.author && metadata.author.length > 0) {
-			const authors = (metadata.author as Author[]).map(author => `${author.given} ${author.family}`);
-			newFrontmatterString += `authors: ${JSON.stringify(authors)}\n`;
-		}
-		if (metadata['container-title'] && metadata['container-title'][0]) {
-			newFrontmatterString += `Journal: "${metadata['container-title'][0]}"\n`;
-		}
-		if (metadata['volume']) {
-			newFrontmatterString += `Volume: ${metadata['volume']}\n`;
-		}
-		if (metadata['page']) {
-			newFrontmatterString += `Page: ${metadata['page']}\n`;
-		}
-		if (metadata['issue']) {
-			newFrontmatterString += `Issue: ${metadata['issue']}\n`;
-		}
-		if (metadata.issued && metadata.issued['date-parts'] && metadata.issued['date-parts'][0]) {
-			const dateParts = metadata.issued['date-parts'][0];
-			const year = dateParts[0];
-			const month = dateParts[1];
-			const day = dateParts[2];
-			let dateString = `${year}`;
-			if (month) dateString += `-${String(month).padStart(2, '0')}`;
-			if (day) dateString += `-${String(day).padStart(2, '0')}`;
-			newFrontmatterString += `Publication_Date: ${dateString}\n`;
-		}
-		if (metadata.DOI) {
-			newFrontmatterString += `DOI: ${metadata.DOI}\n`;
-		}
-		if (metadata.type) {
-			newFrontmatterString += `Type: ${metadata.type}\n`;
-		}
-		if (metadata.URL) {
-			newFrontmatterString += `URL: ${metadata.URL}\n`;
-		}
-		if (metadata.ISBN && metadata.ISBN[0]) {
-			newFrontmatterString += `ISBN: ${metadata.ISBN[0]}\n`;
-		}
-		if (metadata['date-accessed']) {
-			newFrontmatterString += `Date Accessed: ${metadata['date-accessed']}\n`;
-		} else {
-			const currentDate = new Date();
-			const month = (currentDate.getMonth() + 1).toString().padStart(2, "0");
-			const day = currentDate.getDate().toString().padStart(2, "0");
-			const yearAccessed = currentDate.getFullYear();
-			const accessedDate = `${yearAccessed}-${month}-${day}`;
-			newFrontmatterString += `Date Accessed: ${accessedDate}\n`;
-		}
-
-		newFrontmatterString += `---`;
-
-
-		if (frontmatterMatch) {
-			// Replace existing frontmatter
-			await this.app.vault.modify(file, fileContent.replace(frontmatterMatch[0], newFrontmatterString));
-		} else {
-			// If no frontmatter (unlikely, but handle case), prepend it.
-			await this.app.vault.modify(file, newFrontmatterString + "\n" + contentBody);
-		}*/
-	}
-
-
-	async changeCitationStyle(file: TFile, newStyle: CitationStyle): Promise<void> {
-		if (!file) {
-			throw new Error("No file provided to change citation style.");
-		}
-
-		let fileContent = await this.app.vault.read(file);
-		const frontmatterRegex = /^---([\s\S]*?)---/;
-		let frontmatterMatch = fileContent.match(frontmatterRegex);
-		let frontmatter: any = {};
-		let contentBody = fileContent;
-
-		if (frontmatterMatch) {
-			frontmatter = yaml.load(frontmatterMatch[1]) as CitationMetadata || {};
-			contentBody = fileContent.substring(frontmatterMatch[0].length);
-		} else {
-			throw new Error("No YAML frontmatter found in the note to update citation style.");
-		}
-
-
-		let citationMetadata: CitationMetadata = frontmatter;
-
-		// 2. Check for essential metadata (author, issued, title, container-title)
-		const requiredMetadata = ['author', 'issued', 'title', 'container-title'];
-		let metadataComplete = true;
-		for (const field of requiredMetadata) {
-			if (!citationMetadata[field]) {
-				metadataComplete = false;
-				break;
-			}
-		}
-
-		if (!metadataComplete) {
-			// 3. Metadata is missing - re-fetch using DOI
-			const doi = citationMetadata.DOI;
-			if (doi) {
-				try {
-					const newData = await this.fetchCrossrefData(doi);
-					if (newData && newData.message) {
-						// 4. Update citationMetadata with fetched data
-						citationMetadata = newData.message;
-						// Get and Format Current Date for "Accessed" and add to metadata
-						const currentDate = new Date();
-						const month = (currentDate.getMonth() + 1).toString().padStart(2, "0");
-						const day = currentDate.getDate().toString().padStart(2, "0");
-						const yearAccessed = currentDate.getFullYear();
-						citationMetadata['date-accessed'] = `${yearAccessed}-${month}-${day}`;
-
-						// 5. Update YAML frontmatter in the file with updated citationMetadata
-						//await this.updateYAMLFrontmatter(file, citationMetadata);
-						await this.updateYAMLFrontmatter(file, citationMetadata);
-						new Notice(`Re-fetched citation data from Crossref.`);
-					} else {
-						throw new Error("Failed to re-fetch data from Crossref for DOI: " + doi);
-					}
-				} catch (fetchError) {
-					console.error("Error re-fetching data:", fetchError);
-					throw new Error("Error re-fetching citation data: " + fetchError.message);
-				}
-			} else {
-				throw new Error("Missing DOI in note metadata. Cannot re-fetch citation data.");
-			}
-		}
-
-
-		// 6. Format citation using new style (as before)
-		let citationText = '';
-		if (newStyle === 'Harvard') {
-			citationText = this.formatHarvardCitation(citationMetadata);
-		} else if (newStyle === 'Vancouver') {
-			citationText = this.formatVancouverCitation(citationMetadata);
-		} else if (newStyle === 'APA') {
-			citationText = this.formatAPACitation(citationMetadata);
-		} else if (newStyle === 'Chicago') {
-			citationText = this.formatChicagoCitation(citationMetadata);
-		} else if (newStyle === 'AMA') {
-			citationText = this.formatAMACitation(citationMetadata);
-		} else if (newStyle === 'AP') {
-			citationText = this.formatAPCitation(citationMetadata);
-		} else if (newStyle === 'Canadian') {
-			citationText = this.formatCanadianCitation(citationMetadata);
-		} else if (newStyle === 'Oxford') { // ADDED Oxford style
-			citationText = this.formatOxfordReferenceCitation(citationMetadata);
-		} else if (newStyle === 'None') {
-			citationText = ''; // or you could set it to a default like DOI or URL if available
-		}
-
-
-		const citationSectionRegex = /(## Citation\n)([\s\S]*?)(\n---)/;
-
-		const newCitationSection = `## Citation\n${citationText}\n\n---`;
-		let updatedContent = '';
-
-		if (contentBody.match(citationSectionRegex)) {
-			updatedContent = contentBody.replace(citationSectionRegex, `$1${citationText}\n\n---`);
-
-		} else {
-			// If "## Citation" section is not found (shouldn't happen if note was created by plugin), append it.
-			updatedContent = contentBody + `\n### Citation\n${citationText}\n\n---`;
-		}
-
-
-		await this.app.vault.modify(file, frontmatterMatch ? `---\n${frontmatterMatch[1]}---\n${updatedContent}` : contentBody + '\n' + newCitationSection);
-
-
-	}
-
-
 	// --- Citation Formatting Functions ---
 
 	formatHarvardCitation(message: any): string {
@@ -657,18 +348,18 @@ export default class HappyRef extends Plugin {
 		const authors = authorsArray.map((author: Author) => `${author.family}, ${author.given?.[0]}.`).join(', ');
 
 		// Authors arrangement for citation
-			let AuthorArray = authors.split(",");
-		    let authorStr = authorsArray[0].family;
-			if (AuthorArray.length > 1 ) {
-				authorStr += ' et al';
+		const AuthorArray = authors.split(",");
+		let authorStr = authorsArray[0].family;
+		if (AuthorArray.length > 1 ) {
+			authorStr += ' et al';
 
-			}
-			if (AuthorArray.length <1) {
-				authorStr += '';
-			}
+		}
+		if (AuthorArray.length <1) {
+			authorStr += '';
+		}
 
 
-			const year = message.issued['date-parts'][0][0];
+		const year = message.issued['date-parts'][0][0];
 		if (!year) return "Could not generate Harvard citation due to missing year data.";
 		const title = message.title[0];
 		const journal = message['container-title'][0];
@@ -716,9 +407,9 @@ export default class HappyRef extends Plugin {
 
 
 		let reference = `${authors} ${title}. ${journal}. ${year}; Available from: [https://doi.org/${doi}].`;
- 		reference += `\n---\n\n`;
+		reference += `\n---\n\n`;
 		// Authors arrangement for citation
-		let AuthorArray = authors.split(",");
+		const AuthorArray = authors.split(",");
 		let authorStr = authorsArray[0].family;
 		if (AuthorArray.length > 1 ) {
 			authorStr += ' et al';
@@ -797,7 +488,7 @@ export default class HappyRef extends Plugin {
 		let reference = citation;
 		reference += `\n---\n\n`;
 		// Authors arrangement for citation
-		let AuthorArray = authors.split(",");
+		const AuthorArray = authors.split(",");
 		let authorStr = authorsArray[0].family;
 		if (AuthorArray.length > 1 ) {
 			authorStr += ' et al';
@@ -869,7 +560,7 @@ export default class HappyRef extends Plugin {
 		let reference = citation;
 		reference += `\n---\n\n`;
 		// Authors arrangement for citation
-		let AuthorArray = authors.split(",");
+		const AuthorArray = authors.split(",");
 		let authorStr = authorsArray[0].family;
 		if (AuthorArray.length > 1 ) {
 			authorStr += ' et al';
@@ -947,7 +638,7 @@ export default class HappyRef extends Plugin {
 		let reference = citation;
 		reference += `\n---\n\n`;
 		// Authors arrangement for citation
-		let AuthorArray = authors.split(",");
+		const AuthorArray = authors.split(",");
 		let authorStr = authorsArray[0].family;
 		if (AuthorArray.length > 1 ) {
 			authorStr += ' et al';
@@ -1007,7 +698,7 @@ export default class HappyRef extends Plugin {
 		let reference = citation;
 		reference += `\n---\n\n`;
 		// Authors arrangement for citation
-		let AuthorArray = authors.split(",");
+		const AuthorArray = authors.split(",");
 		let authorStr = authorsArray[0].family;
 		if (AuthorArray.length > 1 ) {
 			authorStr += ' et al';
@@ -1132,7 +823,7 @@ export default class HappyRef extends Plugin {
 		let reference = citation;
 		reference += `\n---\n\n`;
 		// Authors arrangement for citation
-		let AuthorArray = authors.split(",");
+		const AuthorArray = authors.split(",");
 		let authorStr = authorsArray[0].family;
 		if (AuthorArray.length > 1 ) {
 			authorStr += ' et al';
@@ -1191,54 +882,8 @@ class DOIModal extends Modal {
 	}
 }
 
-class CitationStyleModal extends Modal {
-	newStyle: CitationStyle;
-	onSubmit: (newStyle: CitationStyle) => void;
-	plugin: HappyRef; // Add plugin property
 
-	constructor(app: App, plugin: HappyRef, onSubmit: (newStyle: CitationStyle) => void) { // Modify constructor to accept plugin
-		super(app);
-		this.onSubmit = onSubmit;
-		this.plugin = plugin; // Store the plugin instance
-	}
-
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.createEl('h2', { text: 'Change Citation Style' });
-
-		new Setting(contentEl)
-			.setName('Select Citation Style')
-			.addDropdown(async (dropdown: DropdownComponent) => {
-				const citationStyles: CitationStyle[] = ['Harvard', 'Vancouver', 'APA', 'Chicago', 'AMA', 'AP', 'Canadian', 'Oxford', 'None']; // ADDED 'Oxford' to dropdown
-				citationStyles.forEach(style => {
-					dropdown.addOption(style, style);
-				});
-				dropdown.setValue(this.plugin.settings.citationStyle); // Now `this.plugin` is valid!
-				dropdown.onChange(async (value: CitationStyle) => {
-					this.newStyle = value;
-				});
-			});
-
-		new Setting(contentEl)
-			.addButton(btn => btn
-				.setButtonText('Change Style')
-				.setCta()
-				.onClick(() => {
-					this.close();
-					this.onSubmit(this.newStyle);
-				}));
-
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
-	}
-}
-
-
-
-class CrossrefSettingTab extends PluginSettingTab {
+class HappyrefSettingTab extends PluginSettingTab {
 	plugin: HappyRef;
 
 	constructor(app: App, plugin: HappyRef) {
@@ -1250,11 +895,8 @@ class CrossrefSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 
 		containerEl.empty();
-
-		containerEl.createEl('h2', { text: 'HappyRef Settings' });
-
 		new Setting(containerEl)
-			.setName('Default Citation Style')
+			.setName('Default citation style')
 			.setDesc('Choose the default citation style for notes.')
 			.addDropdown(async (dropdown) => {
 				const citationStyles: CitationStyle[] = ['Harvard', 'Vancouver', 'APA', 'Chicago', 'AMA', 'AP', 'Canadian', 'Oxford', 'None']; // ADDED 'Oxford' to dropdown
@@ -1269,7 +911,7 @@ class CrossrefSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName('Filename Style')
+			.setName('Filename style')
 			.setDesc('Choose the style for the filename of the created notes.')
 			.addDropdown(async (dropdown) => {
 				const filenameStyles: FileNameStyle[] = ['Title', 'Author', 'Author (Year)']; // Corrected array of FileNameStyle
@@ -1283,9 +925,9 @@ class CrossrefSettingTab extends PluginSettingTab {
 				});
 			});
 
-
+/*
 		new Setting(containerEl)
-			.setName('Default Folder')
+			.setName('Default folder')
 			.setDesc('Enter the folder path where notes will be created. Leave empty for root.')
 			.addText(text => {
 				text
@@ -1296,11 +938,36 @@ class CrossrefSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 
-			});
+			});*/
+
+					new Setting(this.containerEl)
+						.setName("New notes location")
+						.setDesc("Notes will be saved  in this folder.")
+						.addSearch((cb) => {
+							new FolderSuggest(this.app, cb.inputEl);
+							cb.setPlaceholder("Example: folder1/folder2")
+								.setValue(this.plugin.settings.defaultFolder)
+								.onChange((new_folder) => {
+									// Trim folder and Strip ending slash if there
+									new_folder = new_folder.trim()
+									new_folder = new_folder.replace(/\/$/, "");
+
+									this.plugin.settings.defaultFolder = new_folder;
+									this.plugin.saveSettings();
+								});
+							// @ts-ignore
+							cb.containerEl.addClass("templater_search");
+						});
+
+
+
+
+
+
 
 		new Setting(containerEl)
 			.setName('Tag')
-			.setDesc('Enter the tag which will be assigned to notes when  created.')
+			.setDesc('Enter the tag which will be assigned to notes when created.')
 			.addText(text => text
 				.setPlaceholder('e.g., Tag: HappyRefNote or CreatedBy: HappyRef')
 				.setValue(this.plugin.settings.tag)

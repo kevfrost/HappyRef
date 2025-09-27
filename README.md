@@ -31,7 +31,7 @@ If you want to stay up-to-date with the latest beta releases, you can use BRAT:
 
 ## Usage
 - Install as above
-- Either click on the Smiley icon or access the command palette (Ctrl+P) and start typing, then select "HappyRef Get Citation from CrossRef" to generate a new literature note.  The system will prompt for a DOI, from which it will pull data into YAML frontmatter and attempt to construct a citation and pull the article's abstract.
+- Either click on the Smiley File icon or access the command palette (Ctrl+P) and start typing, then select "HappyRef Get Citation from CrossRef" to generate a new literature note.  The system will prompt for a DOI, from which it will pull data into YAML frontmatter and attempt to construct a citation and pull the article's abstract.
 - Data is in the frontmatter, so should be accessible via Dataview and other plugins.
 
 ### Example workflow
@@ -45,7 +45,7 @@ If you want to stay up-to-date with the latest beta releases, you can use BRAT:
 
 
 ## Additional features
-- Changed your mind about the citation style?  Go to the command palette and select Change Citation Style
+- ~~~Changed your mind about the citation style?  Go to the command palette and select Change Citation Style~~~ This has been removed as it was causing issues, hopefully to return
 - Works with either the https or plain version (https://doi.org/10.58594/rtest.v4i2.113 or 10.58594/rtest.v4i2.113) of the DOI.
 - Want a different default style? Go to settings and select your option there
 - Want files created somewhere different? Go to settings and select your folder
